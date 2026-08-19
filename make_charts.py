@@ -215,6 +215,30 @@ def fig_december():
     save(fig, "05_december_probe.png")
 
 
+CANVAS = (1920, 1080)   # 16:9, one size for every figure
+
+
+def normalise():
+    """Pad every figure onto an identical canvas.
+
+    `bbox_inches="tight"` crops to content, so each chart comes out a slightly
+    different size. That is fine in isolation and looks careless when five of
+    them are swiped through one after another, so they all get centred on the
+    same canvas afterwards.
+    """
+    from PIL import Image
+    for path in sorted(FIG.glob("0*.png")):
+        img = Image.open(path).convert("RGB")
+        scale = min(CANVAS[0] / img.width, CANVAS[1] / img.height)
+        img = img.resize((round(img.width * scale), round(img.height * scale)),
+                         Image.LANCZOS)
+        sheet = Image.new("RGB", CANVAS, SURFACE)
+        sheet.paste(img, ((CANVAS[0] - img.width) // 2,
+                          (CANVAS[1] - img.height) // 2))
+        sheet.save(path)
+        print(f"  {path.name}  {CANVAS[0]} x {CANVAS[1]}")
+
+
 def main():
     FIG.mkdir(parents=True, exist_ok=True)
     train = D.repair_weight(D.load_train())
@@ -222,6 +246,7 @@ def main():
     fig_target(train); fig_split(train); fig_ablation(abl)
     fig_floor(abl, D.flag_inflated(train).mean() * 100)
     fig_december()
+    normalise()
 
 
 if __name__ == "__main__":
