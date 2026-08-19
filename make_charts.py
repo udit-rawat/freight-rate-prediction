@@ -26,6 +26,9 @@ plt.rcParams.update({
     "axes.edgecolor": "#b8b7b2", "axes.labelcolor": MUTED,
     "xtick.color": MUTED, "ytick.color": MUTED,
     "axes.spines.top": False, "axes.spines.right": False,
+    # Dollar signs are data here, not maths. Without this, a string containing
+    # two of them gets parsed as LaTeX and rendered as italic nonsense.
+    "text.parse_math": False,
 })
 
 
@@ -119,30 +122,42 @@ def fig_split(train):
 # --- 3. ablation -----------------------------------------------------------
 
 def fig_ablation(abl):
-    order = ["base", "+ equipment", "+ market", "+ day of week", "+ lane native",
-             "+ lane encoded", "+ month and trend", "+ fourier season"]
-    m = (abl[abl.model.isin(order + ["null (median rpm)"])]
-         .groupby("model", sort=False).mae.mean())
-    labels = ["null baseline"] + order
-    values = [m["null (median rpm)"]] + [m[o] for o in order]
+    """The ladder, taken from model.ABLATION so it cannot drift out of step."""
+    from src import model as M
+
+    order = list(M.ABLATION)
+    labels = ["null baseline"] + order + ["lane target encoding"]
+    means = abl.groupby("model", sort=False).mae.mean()
+    values = ([means["null (median rpm)"]] + [means[o] for o in order]
+              + [means["rejected: lane target encoding"]])
+
+    colours = [MUTED] + [BLUE] * len(order) + [ORANGE]
+    colours[1 + order.index(M.SELECTED_LABEL)] = AQUA
+
     fig, ax = plt.subplots()
     y = np.arange(len(labels))[::-1]
-    ax.barh(y, values, height=0.55, color=[MUTED] + [BLUE] * len(order))
-    for yi, v in zip(y, values):
-        ax.text(v + 3, yi, f"${v:,.0f}", va="center", fontsize=9,
+    ax.barh(y, values, height=0.55, color=colours)
+    for yi, v, lab in zip(y, values, labels):
+        note = ""
+        if lab == M.SELECTED_LABEL:
+            note = "   shipped"
+        elif lab == "lane target encoding":
+            note = "   rejected, costs $24"
+        ax.text(v + 3, yi, f"${v:,.0f}{note}", va="center", fontsize=9,
                 color=INK, fontweight="bold")
     ax.set_yticks(y); ax.set_yticklabels(labels, fontsize=9, color=INK)
     ax.set_xlabel("Mean absolute error, dollars, across three folds")
-    ax.set_xlim(0, max(values) * 1.12)
+    ax.set_xlim(0, max(values) * 1.30)
     frame(ax, "What each feature group was actually worth",
-          "Added one at a time. The gap between a bar and the one above it is that group's contribution")
+          "Added one at a time. The best score is lane native at $219; the calendar groups cost "
+          "$9.70 against a $30 fold spread, and I shipped them anyway so the model can express season")
     ax.grid(axis="y", visible=False); ax.grid(axis="x", color=GRID, linewidth=0.8)
     save(fig, "03_ablation.png")
 
 
 # --- 4. the error floor ----------------------------------------------------
 
-def fig_floor(abl):
+def fig_floor(abl, inflated_pct):
     g = abl.groupby("model")[["mae", "mae_clean"]].mean()
     null, best = g.loc["null (median rpm)"], g.loc["+ fourier season"]
     fig, ax = plt.subplots()
@@ -163,7 +178,7 @@ def fig_floor(abl):
     ax.set_xlabel("Mean absolute error, dollars")
     pct = floor[1] / (reducible[1] + floor[1]) * 100
     frame(ax, "Part of the error was never reachable",
-          f"0.64% of loads are inflated at random. They contribute about the same dollars "
+          f"{inflated_pct:.2f}% of loads are inflated at random. They contribute about the same dollars "
           f"to the baseline and to the tuned model, and are {pct:.0f}% of what is left")
     ax.grid(axis="y", visible=False); ax.grid(axis="x", color=GRID, linewidth=0.8)
     ax.set_ylim(-0.55, 1.55)
@@ -204,7 +219,9 @@ def main():
     FIG.mkdir(parents=True, exist_ok=True)
     train = D.repair_weight(D.load_train())
     abl = pd.read_csv(C.RESULTS_DIR / "ablation_scores.csv")
-    fig_target(train); fig_split(train); fig_ablation(abl); fig_floor(abl); fig_december()
+    fig_target(train); fig_split(train); fig_ablation(abl)
+    fig_floor(abl, D.flag_inflated(train).mean() * 100)
+    fig_december()
 
 
 if __name__ == "__main__":
