@@ -1,0 +1,11 @@
+# Core
+matplotlib>=3.8,<4
+numpy>=1.26,<3
+pandas>=2.0,<3
+
+# Modelling
+scikit-learn>=1.5,<2
+
+# Only used by the LightGBM challenger in src/model.py, which I did not ship.
+# Everything in the default pipeline runs without it.
+lightgbm>=4.3,<5

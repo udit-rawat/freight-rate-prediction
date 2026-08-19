@@ -1,0 +1,15 @@
+# Normalise line endings to LF everywhere.
+#
+# Without this, a clone under a Windows-style `core.autocrlf` setting rewrites
+# the data CSVs with CRLF endings on checkout. That changes their bytes, breaks
+# checksum comparisons, and produces whole-file diffs on files that did not
+# change. The data files are deliverable inputs, so they must round-trip exactly.
+* text=auto eol=lf
+
+*.csv text eol=lf
+*.py  text eol=lf
+*.md  text eol=lf
+
+*.png binary
+*.pdf binary
+*.ipynb text eol=lf

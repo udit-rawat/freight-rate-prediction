@@ -1,0 +1,31 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- macOS ---
+.DS_Store
+
+# --- Tooling ---
+.claude/
+
+# --- Model artifacts (regenerable via `python run.py`) ---
+*.pkl
+*.joblib
+
+# =============================================================================
+# DO NOT ADD THE FOLLOWING. They are generated, but they are the outputs the
+# project exists to produce, and ignoring them would leave the repo unreadable
+# without running an eight minute pipeline first.
+#
+#   data/*.csv                  regenerable via `python make_synthetic_data.py`,
+#                               committed so the repo runs on clone
+#   validation_predictions.csv  the 12,000 predictions
+#   results/                    every score, one CSV per stage
+#   results/figures/            the charts
+# =============================================================================
